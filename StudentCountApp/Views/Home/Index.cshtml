@@ -1,0 +1,194 @@
+@{
+    ViewData["Title"] = "Student Count";
+}
+
+<style>
+    .hero {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9f7ff 100%);
+        border-radius: .5rem;
+        padding: 1.25rem;
+        box-shadow: 0 6px 18px rgba(22, 45, 61, 0.06);
+    }
+    .filter-label { font-weight: 600; font-size: .9rem; }
+    .result-card { border-radius: .5rem; padding: 1.25rem; }
+    .count-big { font-size: 2.5rem; font-weight: 700; letter-spacing: -.02em; }
+    .muted-note { color: #6c757d; font-size: .9rem; }
+    .spinner-overlay { display:inline-flex; align-items:center; gap:.5rem; }
+</style>
+
+<div class="hero mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-0">Student Count</h2>
+            <div class="muted-note">Filter students and get a quick tally. Choose "All" to include every value.</div>
+        </div>
+        <div>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-primary">
+                <path d="M3 13h2v-2H3v2zm4 0h2v-2H7v2zm4 0h2v-2h-2v2z" fill="#0d6efd" />
+                <path d="M21 6H3v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6z" stroke="#0d6efd" stroke-width="0"/>
+            </svg>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm p-3">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-2">
+            <label for="year" class="form-label filter-label">Year</label>
+            <select id="year" class="form-select">
+                <option value="" selected disabled>Select</option>
+                <option value="0">All</option>
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label for="divnCode" class="form-label filter-label">Division</label>
+            <select id="divnCode" class="form-select">
+                <option value="" selected disabled>Select</option>
+                <option value="0">All</option>
+                @for (int i = 1; i <= 9; i++)
+                {
+                    <option value="@i">@i</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label for="stream" class="form-label filter-label">Stream</label>
+            <select id="stream" class="form-select">
+                <option value="" selected disabled>Select</option>
+                <option value="0">All</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label for="frRptNoc" class="form-label filter-label">FR Report</label>
+            <select id="frRptNoc" class="form-select">
+                <option value="" selected disabled>Select</option>
+                <option value="0">All</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label for="sexCd" class="form-label filter-label">Gender</label>
+            <select id="sexCd" class="form-select">
+                <option value="" selected disabled>Select</option>
+                <option value="0">All</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+            </select>
+        </div>
+
+        <div class="col-md-2 d-grid">
+            <button id="btnGetCount" class="btn btn-primary btn-lg">Get Count</button>
+        </div>
+    </div>
+
+    <hr class="my-4" />
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="result-card border p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="muted-note">Result</div>
+                        <div id="count" class="count-big">—</div>
+                    </div>
+                    <div id="resultNote" class="text-end muted-note">Choose filters and click Get Count</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="result-card border p-3 h-100">
+                <div class="muted-note">Details</div>
+                <div id="details" class="mt-2">No query run yet.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function animateCount(el, from, to, duration) {
+            const start = performance.now();
+            requestAnimationFrame(function tick(now) {
+                const progress = Math.min((now - start) / duration, 1);
+                const current = Math.floor(from + (to - from) * progress);
+                el.textContent = current.toLocaleString();
+                if (progress < 1) requestAnimationFrame(tick);
+            });
+        }
+
+        document.getElementById("btnGetCount").addEventListener("click", async () => {
+            const resultNote = document.getElementById("resultNote");
+            const details = document.getElementById("details");
+            const countEl = document.getElementById("count");
+
+            const fields = [
+                { id: 'year', label: 'Year' },
+                { id: 'divnCode', label: 'Division' },
+                { id: 'stream', label: 'Stream' },
+                { id: 'frRptNoc', label: 'FR Report' },
+                { id: 'sexCd', label: 'Gender' }
+            ];
+
+            const missing = fields.filter(f => !document.getElementById(f.id).value)
+                                  .map(f => f.label);
+
+            if (missing.length) {
+                details.innerHTML = "<span class='text-warning'>Please select: " + missing.join(', ') + "</span>";
+                return;
+            }
+
+            const params = new URLSearchParams({
+                year: document.getElementById("year").value,
+                divnCode: document.getElementById("divnCode").value,
+                stream: document.getElementById("stream").value,
+                frRptNoc: document.getElementById("frRptNoc").value,
+                sexCd: document.getElementById("sexCd").value
+            });
+
+            // show loading state
+            resultNote.innerHTML = "<span class='spinner-overlay'><div class='spinner-border spinner-border-sm' role='status'></div> Fetching...</span>";
+            details.textContent = '';
+            countEl.textContent = '0';
+
+            try {
+                const response = await fetch('/api/students/count?' + params.toString());
+                if (!response.ok) throw new Error('Server returned ' + response.status);
+                const data = await response.json();
+
+                // animate count
+                animateCount(countEl, 0, data.studentCount, 800);
+
+                // friendly message templates
+                const templates = [
+                    'There are {0} {1} matching your criteria. 🎓',
+                    'Great news — I found {0} {1}! ✅',
+                    'Heads up: {0} {1} meet your filter. Want to refine it? 🔍',
+                    'Currently showing {0} {1}. Keep exploring! ✨',
+                    'Result: {0} {1}.'
+                ];
+
+                const count = data.studentCount;
+                const plural = count === 1 ? 'student' : 'students';
+                const idx = Math.abs(count) % templates.length;
+                let message = templates[idx].replace('{0}', count.toLocaleString()).replace('{1}', plural);
+                if (count === 0) message = 'No students found for that filter. Try "All" or broaden your selection. 💡';
+
+                resultNote.textContent = '';
+                details.innerHTML = '<div class="fw-semibold">' + message + '</div>';
+            } catch (err) {
+                details.innerHTML = "<span class='text-danger'>Error: " + err.message + "</span>";
+                resultNote.textContent = '';
+            }
+        });
+    </script>
+}
